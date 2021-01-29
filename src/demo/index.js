@@ -1,9 +1,68 @@
 window.onload = function () {
-  function getVirtualAttribute(tagName, attribute) {
 
+  // 判断是否需要隐藏，对于需要隐藏的元素用登内容的框表示
+  function isNeedHideElement(node, options) {
+    const { hideClass, hideValue } = options;
+    if (typeof hideClass === "string") {
+      if (node.classList.contains(hideClass)) {
+        return true;
+      }
+    } else {
+      if (
+        Array.from(node.classList).some((item) => hideClass.test(item) === true)
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
-  function serializeNode(node) {
+  // 对于不同类型元素进行处理
+  function getVirtualAttribute(
+    tagName,
+    attributes,
+    { node, needHide, hideValue },
+  ) {
+    // if hide element use mask to replace, return block
+    if (needHide) {
+      return;
+    }
+
+    switch (tagName) {
+      // link todo
+      case "link":
+        attributes.href = "";
+        return attributes;
+      // script todo
+      case "script":
+        attributes.href = "";
+        return attributes;
+      // get the result value
+      case "input":
+      case "select":
+      case "textarea":
+        attributes.href = "";
+        return attributes;
+      // get select value
+      case "option":
+        attributes.href = "";
+        return attributes;
+      // get data url
+      case "canvas":
+        attributes.href = "";
+        return attributes;
+      // pause or play
+      case "video":
+      case "audio":
+        attributes.href = "";
+        return attributes;
+    }
+  }
+
+  function serializeNode(
+    node,
+    { doc = null, hideClass = null, hideValue = null },
+  ) {
     switch (node.nodeType) {
       case node.DOCUMENT_NODE:
         return {
@@ -19,19 +78,20 @@ window.onload = function () {
         };
       case node.ELEMENT_NODE:
         const tagName = node.tagName.toLowerCase().trim();
-        let attribute = {};
+        let attributes = {};
         for (const { name, value } of Array.from(node.attributes)) {
-          attribute[name] = value;
+          attributes[name] = value;
         }
-        getVirtualAttribute(tagName, attribute);
+        const needHid = isNeedHideElement(node, { hideClass, hideValue });
+        getVirtualAttribute(tagName, attributes, { node, needHid, hideValue });
         return {
           type: "ELEMENT_NODE",
           childNodes: [],
           tagName,
-          attribute,
+          attributes,
         };
       case node.TEXT_NODE:
-        let textContent = node.textContent.trim() || "";
+        const textContent = node.textContent.trim() || "";
         const parentTagName =
           node.parentNode && node.parentNode.tagName.toLowner;
         // style script 特殊处理
@@ -54,8 +114,8 @@ window.onload = function () {
     }
   }
 
-  function serialize(node) {
-    const _serializeData = serializeNode(node);
+  function serialize(node, options) {
+    const _serializeData = serializeNode(node, options);
     if (!_serializeData) {
       return null;
     }
@@ -65,7 +125,7 @@ window.onload = function () {
       serializeData.type === "ELEMENT_NODE"
     ) {
       for (const childNode of Array.from(node.childNodes)) {
-        const serializeNode = serialize(childNode);
+        const serializeNode = serialize(childNode, options);
         if (serializeNode) {
           serializeData.childNodes.push(serializeNode);
         }
@@ -74,5 +134,9 @@ window.onload = function () {
     return serializeData;
   }
 
-  serialize(window.document);
+  const serizlizeData = serialize(window.document, {
+    doc: window.document,
+    hideClass: "password",
+    hideValue: "XXXXXX",
+  });
 };
